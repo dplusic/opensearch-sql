@@ -671,16 +671,17 @@ public class DatabaseMetaDataImpl implements DatabaseMetaData, JdbcWrapper, Logg
 
     @Override
     public ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern, String[] types) throws SQLException {
-        // TODO - when server plugin supports PreparedStatement fully, implement this as a preparedStatment with params
-        log.debug(() -> logMessage("getTables(%s, %s, %s, %s)",
-                catalog, schemaPattern, tableNamePattern, Arrays.toString(types)));
+        List<ResultSetColumnDescriptor> columnDescriptors = new ArrayList<>();
+        columnDescriptors.add(rscd("TABLE_CAT"));
+        columnDescriptors.add(rscd("TABLE_SCHEM"));
+        columnDescriptors.add(rscd("TABLE_NAME"));
 
-        TableMetadataStatement statement = new TableMetadataStatement(connection, tableNamePattern, log);
+        List<List<Object>> dataRows = new ArrayList<>();
 
-        ResultSet resultSet = statement.executeQuery();
-
-        log.debug(() -> logMessage("getTables returning: " + resultSet));
-        return resultSet;
+        if (clusterCatalogMatches(catalog) && clusterSchemaMatches(schemaPattern)) {
+            dataRows.add(Arrays.asList(null, null, "ALL"));
+        }
+        return new ResultSetImpl(null, columnDescriptors, dataRows, log);
     }
 
     @Override
@@ -1288,7 +1289,7 @@ public class DatabaseMetaDataImpl implements DatabaseMetaData, JdbcWrapper, Logg
                     case 2:
                         break;
                     case 3:
-                        columnData = tableNamePattern;
+                        columnData = "ALL";
                         break;
                     case 4:
                         columnData = super.getColumnFromCursor(1);

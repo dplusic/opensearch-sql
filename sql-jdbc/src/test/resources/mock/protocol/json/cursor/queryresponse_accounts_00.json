@@ -1,5 +1,5 @@
 {
-  "schema": [
+  "columns": [
     {
       "name": "firstname",
       "type": "text"
@@ -11,7 +11,7 @@
   ],
   "cursor": "abcde_1",
   "total": 20,
-  "datarows": [
+  "rows": [
     [
       "Amber",
       32

@@ -1,5 +1,5 @@
 {
-  "schema": [
+  "columns": [
     {
       "name": "user",
       "type": "keyword"
@@ -18,7 +18,7 @@
     }
   ],
   "total": 20000,
-  "datarows": [
+  "rows": [
     [
       "Jash",
       "Display Progress Bar at the Time of Processing",

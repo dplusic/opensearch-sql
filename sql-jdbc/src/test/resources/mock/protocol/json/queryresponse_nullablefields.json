@@ -1,5 +1,5 @@
 {
-  "schema": [
+  "columns": [
     {
       "name": "testBoolean",
       "type": "boolean"
@@ -50,7 +50,7 @@
     }
   ],
   "total": 2,
-  "datarows": [
+  "rows": [
     [
       null,
       "2",

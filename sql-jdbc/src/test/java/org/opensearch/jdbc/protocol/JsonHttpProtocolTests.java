@@ -90,7 +90,7 @@ public class JsonHttpProtocolTests {
 
         MockHttpTransport.setupConnectionResponse(mockTransport, mockResponse);
 
-        JsonHttpProtocol protocol = new JsonHttpProtocol(mockTransport);
+        JsonHttpProtocol protocol = new JsonHttpProtocol(mock(ConnectionConfig.class), mockTransport);
 
         HttpException ex = assertThrows(HttpException.class, () -> protocol.connect(0));
         assertEquals(404, ex.getStatusCode());
@@ -110,7 +110,7 @@ public class JsonHttpProtocolTests {
 
         MockHttpTransport.setupConnectionResponse(mockTransport, mockResponse);
 
-        JsonHttpProtocol protocol = new JsonHttpProtocol(mockTransport);
+        JsonHttpProtocol protocol = new JsonHttpProtocol(mock(ConnectionConfig.class), mockTransport);
 
         HttpException httpException = assertThrows(HttpException.class, () -> protocol.connect(0));
         assertEquals(403, httpException.getStatusCode());
@@ -301,7 +301,7 @@ public class JsonHttpProtocolTests {
 
         HttpTransport mockTransport = mock(HttpTransport.class);
 
-        String responseBody = "{\"error\":\"Incorrect HTTP method for uri [/_sql?format=jdbc] " +
+        String responseBody = "{\"error\":\"Incorrect HTTP method for uri [/_sql?format=json] " +
                 "and method [POST], allowed: [PUT, DELETE, GET, HEAD]\",\"status\":405}";
 
         CloseableHttpResponse mockResponse = new MockCloseableHttpResponseBuilder()

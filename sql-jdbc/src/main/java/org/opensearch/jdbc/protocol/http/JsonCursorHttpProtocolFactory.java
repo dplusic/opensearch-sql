@@ -26,6 +26,6 @@ public class JsonCursorHttpProtocolFactory implements ProtocolFactory<JsonCursor
 
     @Override
     public JsonCursorHttpProtocol getProtocol(ConnectionConfig connectionConfig, HttpTransport transport) {
-        return new JsonCursorHttpProtocol(transport);
+        return new JsonCursorHttpProtocol(connectionConfig, transport);
     }
 }

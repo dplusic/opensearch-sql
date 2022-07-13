@@ -57,13 +57,6 @@ class ConnectionTests implements WireMockServerHelpers {
 
     @Test
     void testConnectWithBasicAuth(final WireMockServer mockServer) throws ConnectionPropertyException, SQLException {
-        // HTTP Client Basic Auth is not pre-emptive, set up an Auth Challenge
-        mockServer.stubFor(get(urlEqualTo("/"))
-                .willReturn(aResponse()
-                        .withStatus(401)
-                        .withHeader("WWW-Authenticate", "Basic realm=\"Auth Realm\"")
-                ));
-
         // Response if request's basic auth matches expectation
         mockServer.stubFor(get(urlEqualTo("/"))
                 .withBasicAuth("user-name", "password-$#@!*%^123")
@@ -78,7 +71,7 @@ class ConnectionTests implements WireMockServerHelpers {
 
         Connection con = Assertions.assertDoesNotThrow(() -> new Driver().connect(getBaseURLForMockServer(mockServer), props));
 
-        mockServer.verify(2, getRequestedFor(urlEqualTo("/"))
+        mockServer.verify(1, getRequestedFor(urlEqualTo("/"))
                 .withHeader("Accept", equalTo("application/json")));
 
         MockOpenSearch.INSTANCE.assertMockOpenSearchConnectionResponse((OpenSearchConnection) con);
@@ -89,13 +82,6 @@ class ConnectionTests implements WireMockServerHelpers {
     void testConnectDefaultAuthWithUsername(final WireMockServer mockServer) throws SQLException {
         // In the absence of explicit auth type, Basic is used if a username/password
         // is specified
-
-        // HTTP Client Basic Auth is not pre-emptive, set up an Auth Challenge
-        mockServer.stubFor(get(urlEqualTo("/"))
-                .willReturn(aResponse()
-                        .withStatus(401)
-                        .withHeader("WWW-Authenticate", "Basic realm=\"Auth Realm\"")
-                ));
 
         // Response if request's basic auth matches expectation
         mockServer.stubFor(get(urlEqualTo("/"))
@@ -110,7 +96,7 @@ class ConnectionTests implements WireMockServerHelpers {
 
         Connection con = Assertions.assertDoesNotThrow(() -> new Driver().connect(getBaseURLForMockServer(mockServer), props));
 
-        mockServer.verify(2, getRequestedFor(urlEqualTo("/"))
+        mockServer.verify(1, getRequestedFor(urlEqualTo("/"))
                 .withHeader("Accept", equalTo("application/json")));
 
         MockOpenSearch.INSTANCE.assertMockOpenSearchConnectionResponse((OpenSearchConnection) con);
@@ -237,7 +223,7 @@ class ConnectionTests implements WireMockServerHelpers {
             throws SQLException, IOException {
         QueryMock.NycTaxisQueryMock queryMock = new QueryMock.NycTaxisQueryMock();
         queryMock.setupMockServerStub(mockServer, "/context/path/",
-                "/context/path"+ JsonHttpProtocol.DEFAULT_SQL_CONTEXT_PATH+"?format=jdbc");
+                "/context/path"+ JsonHttpProtocol.DEFAULT_SQL_CONTEXT_PATH+"?format="+JsonHttpProtocol.FORMAT_JSON);
 
         Driver driver = new Driver();
         Connection con = Assertions.assertDoesNotThrow(

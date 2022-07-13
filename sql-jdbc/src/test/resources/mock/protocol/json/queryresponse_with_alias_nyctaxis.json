@@ -1,5 +1,5 @@
 {
-  "schema": [
+  "columns": [
     {
       "name": "pickup_datetime",
       "alias": "pdt",
@@ -28,7 +28,7 @@
     }
   ],
   "total": 1000,
-  "datarows": [
+  "rows": [
     [
       "2015-01-01 00:34:42",
       "1",

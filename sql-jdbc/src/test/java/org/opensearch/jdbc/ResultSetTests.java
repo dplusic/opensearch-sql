@@ -96,7 +96,7 @@ public class ResultSetTests implements WireMockServerHelpers {
     @Test
     void testResultSetOnPaginatedResponse(WireMockServer mockServer) throws SQLException, IOException {
 
-        String queryUrl = JsonHttpProtocol.DEFAULT_SQL_CONTEXT_PATH+"?format=jdbc";
+        String queryUrl = JsonHttpProtocol.DEFAULT_SQL_CONTEXT_PATH+"?format="+JsonHttpProtocol.FORMAT_JSON;
         final String sql = "SELECT firstname, age FROM accounts LIMIT 12";
 
         // get Connection stub

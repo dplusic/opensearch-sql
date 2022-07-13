@@ -6,6 +6,7 @@
 
 package org.opensearch.jdbc.protocol.http;
 
+import org.opensearch.jdbc.config.ConnectionConfig;
 import org.opensearch.jdbc.protocol.ClusterMetadata;
 import org.opensearch.jdbc.protocol.ConnectionResponse;
 import org.opensearch.jdbc.protocol.Protocol;
@@ -28,27 +29,26 @@ public class JsonHttpProtocol implements Protocol {
 
     // the value is based on the API endpoint the sql plugin sets up,
     // but this could be made configurable if required
-    public static final String DEFAULT_SQL_CONTEXT_PATH = "/_plugins/_sql";
+    public static final String DEFAULT_SQL_CONTEXT_PATH = "/_sql";
+    public static final String FORMAT_JSON = "json";
 
     private static final Header acceptJson = new BasicHeader(HttpHeaders.ACCEPT, "application/json");
     private static final Header contentTypeJson = new BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json");
-    private static final HttpParam requestJdbcFormatParam = new HttpParam("format", "jdbc");
+    private static final HttpParam requestJsonFormatParam = new HttpParam("format", FORMAT_JSON);
     protected static final Header[] defaultJsonHeaders = new Header[]{acceptJson, contentTypeJson};
     private static final Header[] defaultEmptyRequestBodyJsonHeaders = new Header[]{acceptJson};
-    protected static final HttpParam[] defaultJdbcParams = new HttpParam[]{requestJdbcFormatParam};
+    protected static final HttpParam[] defaultJsonParams = new HttpParam[]{requestJsonFormatParam};
 
     protected static final ObjectMapper mapper = new ObjectMapper();
     private String sqlContextPath;
+    private String timeZone;
     private HttpTransport transport;
     private JsonHttpResponseHandler jsonHttpResponseHandler;
 
-    public JsonHttpProtocol(HttpTransport transport) {
-        this(transport, DEFAULT_SQL_CONTEXT_PATH);
-    }
-
-    public JsonHttpProtocol(HttpTransport transport, String sqlContextPath) {
+    public JsonHttpProtocol(ConnectionConfig connectionConfig, HttpTransport transport) {
         this.transport = transport;
-        this.sqlContextPath = sqlContextPath;
+        this.timeZone = connectionConfig.getTimeZone();
+        this.sqlContextPath = DEFAULT_SQL_CONTEXT_PATH;
         this.jsonHttpResponseHandler = new JsonHttpResponseHandler(this);
     }
 
@@ -81,7 +81,7 @@ public class JsonHttpProtocol implements Protocol {
         try (CloseableHttpResponse response = transport.doPost(
                 sqlContextPath,
                 defaultJsonHeaders,
-                defaultJdbcParams,
+                defaultJsonParams,
                 buildQueryRequestBody(request), 0)) {
 
             return jsonHttpResponseHandler.handleResponse(response, this::processQueryResponse);
@@ -90,7 +90,7 @@ public class JsonHttpProtocol implements Protocol {
     }
 
     private String buildQueryRequestBody(QueryRequest queryRequest) throws IOException {
-        JsonQueryRequest jsonQueryRequest = new JsonQueryRequest(queryRequest);
+        JsonQueryRequest jsonQueryRequest = new JsonQueryRequest(queryRequest, timeZone);
         String requestBody = mapper.writeValueAsString(jsonQueryRequest);
         return requestBody;
     }

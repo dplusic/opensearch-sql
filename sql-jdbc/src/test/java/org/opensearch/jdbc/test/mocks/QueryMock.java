@@ -32,7 +32,7 @@ public abstract class QueryMock {
 
     public void setupMockServerStub(final WireMockServer mockServer)
             throws java.io.IOException {
-        setupMockServerStub(mockServer, "/", JsonHttpProtocol.DEFAULT_SQL_CONTEXT_PATH+"?format=jdbc");
+        setupMockServerStub(mockServer, "/", JsonHttpProtocol.DEFAULT_SQL_CONTEXT_PATH+"?format="+JsonHttpProtocol.FORMAT_JSON);
     }
 
     public void setupMockServerStub(final WireMockServer mockServer, final String connectionUrl, final String queryUrl)

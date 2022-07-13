@@ -21,7 +21,7 @@ public class JdbcQueryRequest implements QueryRequest {
 
     public JdbcQueryRequest(String sql, int fetchSize) {
         this.statement = sql;
-        this.fetchSize = fetchSize;
+        this.fetchSize = Math.max(fetchSize, 1);
     }
 
 

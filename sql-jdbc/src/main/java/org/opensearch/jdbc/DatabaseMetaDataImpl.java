@@ -83,7 +83,7 @@ public class DatabaseMetaDataImpl implements DatabaseMetaData, JdbcWrapper, Logg
 
     @Override
     public String getDatabaseProductName() throws SQLException {
-        return "OpenSearch";
+        return "ElasticSearch";
     }
 
     @Override
@@ -675,10 +675,9 @@ public class DatabaseMetaDataImpl implements DatabaseMetaData, JdbcWrapper, Logg
         log.debug(() -> logMessage("getTables(%s, %s, %s, %s)",
                 catalog, schemaPattern, tableNamePattern, Arrays.toString(types)));
 
-        PreparedStatement pst = connection.prepareStatement("SHOW TABLES LIKE " +
-                (tableNamePattern == null ? "%" : tableNamePattern));
+        TableMetadataStatement statement = new TableMetadataStatement(connection, tableNamePattern, log);
 
-        ResultSet resultSet = pst.executeQuery();
+        ResultSet resultSet = statement.executeQuery();
 
         log.debug(() -> logMessage("getTables returning: " + resultSet));
         return resultSet;
@@ -1199,39 +1198,20 @@ public class DatabaseMetaDataImpl implements DatabaseMetaData, JdbcWrapper, Logg
         }
     }
 
-
-    static class ColumnMetadataStatement extends PreparedStatementImpl {
-        // a special statement with custom logic for building the
-        // ResultSet it returns on execution
-
-        ColumnMetadataStatement(ConnectionImpl connection, String tableNamePattern, String columnNamePattern, Logger log)
+    static class TableMetadataStatement extends PreparedStatementImpl {
+        
+        TableMetadataStatement(ConnectionImpl connection, String tableNamePattern, Logger log)
                 throws SQLException {
-            // TODO - once sql plugin supports PreparedStatement fully, do this through a preparedStatement with params
-            super(connection, "DESCRIBE TABLES LIKE " + tableNamePattern +
-                (columnNamePattern != null ? (" COLUMNS LIKE " + columnNamePattern) : ""),
+            super(connection, "SHOW TABLES LIKE '" +
+                    (tableNamePattern == null ? "%" : tableNamePattern) + "'",
                 log);
         }
+        
+        static class TableMetadataResultSet extends ResultSetImpl {
 
-        static class ColumnMetadataResultSet extends ResultSetImpl {
-
-            ColumnMetadataResultSet(StatementImpl statement, List<? extends ColumnDescriptor> columnDescriptors,
+            TableMetadataResultSet(StatementImpl statement, List<? extends ColumnDescriptor> columnDescriptors,
                                     List<List<Object>> dataRows, Logger log) throws SQLException {
                 super(statement, columnDescriptors, dataRows, log);
-            }
-
-            private int getDataType() {
-                String esDataType = (String) cursor.getColumn(5);
-                return OpenSearchType.fromTypeName(esDataType, false).sqlTypeNumber();
-            }
-
-            private String getDataTypeName() {
-                String esDataType = (String) cursor.getColumn(5);
-                return OpenSearchType.fromTypeName(esDataType, false).name();
-            }
-
-            private int getColumnSize() {
-                String esDataType = (String) cursor.getColumn(5);
-                return OpenSearchType.fromTypeName(esDataType, false).getPrecision();
             }
 
             @Override
@@ -1241,6 +1221,78 @@ public class DatabaseMetaDataImpl implements DatabaseMetaData, JdbcWrapper, Logg
                 Object columnData = null;
 
                 switch (columnIndex) {
+                    case 1:
+                    case 2:
+                        break;
+                    case 3:
+                        columnData = super.getColumnFromCursor(1);
+                        break;
+                    default:
+                        columnData = super.getColumnFromCursor(columnIndex);
+                }
+                
+                return columnData;
+            }
+        }
+
+        @Override
+        protected ResultSetImpl buildResultSet(QueryResponse queryResponse) throws SQLException {
+            return new TableMetadataStatement.TableMetadataResultSet(this, queryResponse.getColumnDescriptors(), queryResponse.getDatarows(), log);
+        }
+    }
+
+    static class ColumnMetadataStatement extends PreparedStatementImpl {
+        // a special statement with custom logic for building the
+        // ResultSet it returns on execution
+        
+        final String tableNamePattern;
+
+        ColumnMetadataStatement(ConnectionImpl connection, String tableNamePattern, String columnNamePattern, Logger log)
+                throws SQLException {
+            // TODO - once sql plugin supports PreparedStatement fully, do this through a preparedStatement with params
+            super(connection, "DESCRIBE LIKE '" + tableNamePattern + "'",
+                log);
+            this.tableNamePattern = tableNamePattern;
+        }
+
+        class ColumnMetadataResultSet extends ResultSetImpl {
+
+            ColumnMetadataResultSet(StatementImpl statement, List<? extends ColumnDescriptor> columnDescriptors,
+                                    List<List<Object>> dataRows, Logger log) throws SQLException {
+                super(statement, columnDescriptors, dataRows, log);
+            }
+
+            private int getDataType() {
+                String esDataType = (String) cursor.getColumn(2);
+                return OpenSearchType.fromTypeName(esDataType, false).sqlTypeNumber();
+            }
+
+            private String getDataTypeName() {
+                String esDataType = (String) cursor.getColumn(2);
+                return OpenSearchType.fromTypeName(esDataType, false).name();
+            }
+
+            private int getColumnSize() {
+                String esDataType = (String) cursor.getColumn(2);
+                return OpenSearchType.fromTypeName(esDataType, false).getPrecision();
+            }
+            
+            @Override
+            protected Object getColumnFromCursor(int columnIndex) {
+                // override behavior/return value of some of the columns
+                // received from the server
+                Object columnData = null;
+
+                switch (columnIndex) {
+                    case 1:
+                    case 2:
+                        break;
+                    case 3:
+                        columnData = tableNamePattern;
+                        break;
+                    case 4:
+                        columnData = super.getColumnFromCursor(1);
+                        break;
                     case 5:
                         columnData = getDataType();
                         break;
@@ -1262,16 +1314,15 @@ public class DatabaseMetaDataImpl implements DatabaseMetaData, JdbcWrapper, Logg
         @Override
         protected ResultSetImpl buildResultSet(QueryResponse queryResponse) throws SQLException {
             // enrich/update the resultSet with some JDBC specific data type info
-            List<ResultSetColumnDescriptor> columnDescriptors = new ArrayList<>();
-
-            for (ColumnDescriptor cd : queryResponse.getColumnDescriptors()) {
-                if ("DATA_TYPE".equals(cd.getName()) || "COLUMN_SIZE".equals(cd.getName())) {
-                    columnDescriptors.add(
-                            rscd(cd.getName(), OpenSearchType.INTEGER.getTypeName()));
-                } else {
-                    columnDescriptors.add(rscd(cd.getName(), cd.getType()));
-                }
-            }
+            List<ResultSetColumnDescriptor> columnDescriptors = Arrays.asList(
+                    rscd("TABLE_CAT", OpenSearchType.TEXT.getTypeName()),
+                    rscd("TABLE_SCHEM", OpenSearchType.TEXT.getTypeName()),
+                    rscd("TABLE_NAME", OpenSearchType.TEXT.getTypeName()),
+                    rscd("COLUMN_NAME", OpenSearchType.TEXT.getTypeName()),
+                    rscd("DATA_TYPE", OpenSearchType.INTEGER.getTypeName()),
+                    rscd("TYPE_NAME", OpenSearchType.TEXT.getTypeName()),
+                    rscd("COLUMN_SIZE", OpenSearchType.INTEGER.getTypeName())
+            );
 
             return new ColumnMetadataResultSet(this, columnDescriptors, queryResponse.getDatarows(), log);
         }

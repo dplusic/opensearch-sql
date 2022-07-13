@@ -6,6 +6,7 @@
 
 package org.opensearch.jdbc.protocol.http;
 
+import org.opensearch.jdbc.config.ConnectionConfig;
 import org.opensearch.jdbc.protocol.QueryRequest;
 import org.opensearch.jdbc.protocol.QueryResponse;
 import org.opensearch.jdbc.protocol.exceptions.ResponseException;
@@ -23,12 +24,8 @@ import java.io.InputStream;
  **/
 public class JsonCursorHttpProtocol extends JsonHttpProtocol {
 
-    public JsonCursorHttpProtocol(HttpTransport transport) {
-        this(transport, DEFAULT_SQL_CONTEXT_PATH);
-    }
-
-    public JsonCursorHttpProtocol(HttpTransport transport, String sqlContextPath) {
-        super(transport, sqlContextPath);
+    public JsonCursorHttpProtocol(ConnectionConfig connectionConfig, HttpTransport transport) {
+        super(connectionConfig, transport);
     }
 
     @Override
@@ -36,7 +33,7 @@ public class JsonCursorHttpProtocol extends JsonHttpProtocol {
         try (CloseableHttpResponse response = getTransport().doPost(
                 getSqlContextPath(),
                 defaultJsonHeaders,
-                defaultJdbcParams,
+                defaultJsonParams,
                 buildQueryRequestBody(request), 0)) {
 
             return getJsonHttpResponseHandler().handleResponse(response, this::processQueryResponse);

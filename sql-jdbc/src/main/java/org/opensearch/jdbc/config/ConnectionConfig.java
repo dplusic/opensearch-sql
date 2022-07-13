@@ -46,6 +46,7 @@ public class ConnectionConfig {
     private String trustStoreType;
     private boolean trustSelfSigned;
     private boolean hostnameVerification;
+    private String timeZone;
 
     private ConnectionConfig(Builder builder) {
         this.url = builder.getUrl();
@@ -80,6 +81,8 @@ public class ConnectionConfig {
         this.trustSelfSigned = builder.getTrustSelfSignedConnectionProperty().getValue();
 
         this.hostnameVerification = builder.getHostnameVerificationConnectionProperty().getValue();
+
+        this.timeZone = builder.getTimeZoneConnectionProperty().getValue();
     }
 
     public static Builder builder() {
@@ -182,6 +185,10 @@ public class ConnectionConfig {
         return hostnameVerification;
     }
 
+    public String getTimeZone() {
+        return timeZone;
+    }
+
     @Override
     public String toString() {
         return "ConnectionConfig{" +
@@ -209,6 +216,7 @@ public class ConnectionConfig {
                 ", trustStoreType='" + trustStoreType + '\'' +
                 ", trustSelfSigned='" + trustSelfSigned + '\'' +
                 ", hostnameVerification='" + hostnameVerification + '\'' +
+                ", timeZone='" + timeZone + '\'' +
                 '}';
     }
 
@@ -256,6 +264,9 @@ public class ConnectionConfig {
         private HostnameVerificationConnectionProperty hostnameVerificationConnectionProperty
                 = new HostnameVerificationConnectionProperty();
 
+        private TimeZoneConnectionProperty timeZoneConnectionProperty
+                = new TimeZoneConnectionProperty();
+
         ConnectionProperty[] connectionProperties = new ConnectionProperty[]{
                 hostProperty,
                 portProperty,
@@ -278,7 +289,8 @@ public class ConnectionConfig {
                 trustStorePasswordConnectionProperty,
                 trustStoreTypeConnectionProperty,
                 trustSelfSignedConnectionProperty,
-                hostnameVerificationConnectionProperty
+                hostnameVerificationConnectionProperty,
+                timeZoneConnectionProperty
         };
 
         private String url = null;
@@ -383,6 +395,10 @@ public class ConnectionConfig {
 
         public HostnameVerificationConnectionProperty getHostnameVerificationConnectionProperty() {
             return hostnameVerificationConnectionProperty;
+        }
+
+        public TimeZoneConnectionProperty getTimeZoneConnectionProperty() {
+            return timeZoneConnectionProperty;
         }
 
         public Builder setLogWriter(PrintWriter printWriter) {

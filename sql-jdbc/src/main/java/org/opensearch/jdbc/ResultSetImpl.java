@@ -145,7 +145,7 @@ public class ResultSetImpl implements ResultSet, JdbcWrapper, LoggingSource {
             JsonCursorHttpProtocolFactory protocolFactory = JsonCursorHttpProtocolFactory.INSTANCE;
             ConnectionImpl connection = (ConnectionImpl) statement.getConnection();
 
-            JsonCursorHttpProtocol protocol = protocolFactory.getProtocol(null, (HttpTransport) connection.getTransport());
+            JsonCursorHttpProtocol protocol = protocolFactory.getProtocol(connection.getConnectionConfig(), (HttpTransport) connection.getTransport());
             QueryResponse queryResponse = protocol.execute(jdbcCursorQueryRequest);
 
             if (queryResponse.getError() != null) {

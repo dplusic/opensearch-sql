@@ -16,13 +16,20 @@ import com.amazonaws.auth.AWS4Signer;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import org.apache.http.Header;
+import org.apache.http.HttpException;
+import org.apache.http.HttpHost;
+import org.apache.http.HttpRequest;
+import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.AuthState;
+import org.apache.http.auth.Credentials;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.config.Registry;
 import org.apache.http.config.RegistryBuilder;
@@ -34,11 +41,14 @@ import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.auth.BasicScheme;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.BasicHttpClientConnectionManager;
+import org.apache.http.protocol.HttpContext;
+import org.apache.http.protocol.HttpCoreContext;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.ssl.SSLContexts;
 import org.apache.http.ssl.TrustStrategy;
@@ -54,6 +64,7 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
+import java.util.concurrent.TimeUnit;
 
 public class ApacheHttpTransport implements HttpTransport, LoggingSource {
     String scheme;
@@ -94,7 +105,8 @@ public class ApacheHttpTransport implements HttpTransport, LoggingSource {
                         new BasicHttpClientConnectionManager(socketFactoryRegistry, connectionFactory))
                 .setDefaultSocketConfig(buildDefaultSocketConfig())
                 .setDefaultRequestConfig(getRequestConfig())
-                .setUserAgent(userAgent);
+                .setUserAgent(userAgent)
+                .evictIdleConnections(5, TimeUnit.SECONDS);
 
         // request compression
         if (!connectionConfig.requestCompression())
@@ -107,6 +119,7 @@ public class ApacheHttpTransport implements HttpTransport, LoggingSource {
                     AuthScope.ANY,
                     new UsernamePasswordCredentials(connectionConfig.getUser(), connectionConfig.getPassword()));
             httpClientBuilder.setDefaultCredentialsProvider(basicCredsProvider);
+            httpClientBuilder.addInterceptorLast(new PreemptiveAuthInterceptor());
 
         } else if (connectionConfig.getAuthenticationType() == AuthenticationType.AWS_SIGV4) {
             AWS4Signer signer = new AWS4Signer();
@@ -258,4 +271,22 @@ public class ApacheHttpTransport implements HttpTransport, LoggingSource {
         }
     }
 
+    static class PreemptiveAuthInterceptor implements HttpRequestInterceptor {
+
+        public void process(final HttpRequest request, final HttpContext context) throws HttpException, IOException {
+            AuthState authState = (AuthState) context.getAttribute(HttpClientContext.TARGET_AUTH_STATE);
+
+            // If no auth scheme available yet, try to initialize it
+            // preemptively
+            if (authState.getAuthScheme() == null) {
+                CredentialsProvider credsProvider = (CredentialsProvider) context.getAttribute(HttpClientContext.CREDS_PROVIDER);
+                HttpHost targetHost = (HttpHost) context.getAttribute(HttpCoreContext.HTTP_TARGET_HOST);
+                Credentials creds = credsProvider.getCredentials(new AuthScope(targetHost.getHostName(), targetHost.getPort()));
+                if (creds == null) {
+                    throw new HttpException("No credentials for preemptive authentication");
+                }
+                authState.update(new BasicScheme(), creds);
+            }
+        }
+    }
 }

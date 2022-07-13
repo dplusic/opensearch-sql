@@ -50,6 +50,7 @@ public class ConnectionImpl implements OpenSearchConnection, JdbcWrapper, Loggin
     private String url;
     private String user;
     private Logger log;
+    private ConnectionConfig connectionConfig;
     private int fetchSize;
     private boolean open = false;
     private Transport transport;
@@ -63,6 +64,7 @@ public class ConnectionImpl implements OpenSearchConnection, JdbcWrapper, Loggin
     public ConnectionImpl(ConnectionConfig connectionConfig, TransportFactory transportFactory,
                           ProtocolFactory protocolFactory, Logger log) throws SQLException {
         this.log = log;
+        this.connectionConfig = connectionConfig;
         this.url = connectionConfig.getUrl();
         this.user = connectionConfig.getUser();
         this.fetchSize = connectionConfig.getFetchSize();
@@ -500,6 +502,10 @@ public class ConnectionImpl implements OpenSearchConnection, JdbcWrapper, Loggin
 
     public Protocol getProtocol() {
         return protocol;
+    }
+
+    public ConnectionConfig getConnectionConfig() {
+        return connectionConfig;
     }
 
     public Logger getLog() {
